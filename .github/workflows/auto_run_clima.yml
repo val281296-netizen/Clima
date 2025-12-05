@@ -22,7 +22,7 @@ jobs:
           python -m pip install --upgrade pip
           # Instalar requirements.txt si existe
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          # Instalar pynasapower directamente desde GitHub
+          # Instalar pynasapower desde GitHub
           pip install git+https://github.com/lucadelu/pynasapower.git
 
       - name: Verificar pynasapower
