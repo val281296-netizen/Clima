@@ -2,7 +2,7 @@ name: Ejecutar Clima automáticamente
 
 on:
   schedule:
-    - cron: "0 */2 * * *"  # Cada 2 horas
+    - cron: "0 */2 * * *"
   workflow_dispatch:
 
 jobs:
@@ -20,14 +20,13 @@ jobs:
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          # Instalar primero requirements
-          pip install --upgrade --force-reinstall -r requirements.txt
+          # Instalar requirements.txt si existe
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           # Instalar pynasapower directamente desde GitHub
-          pip install --upgrade --force-reinstall git+https://github.com/lucadelu/pynasapower.git
+          pip install git+https://github.com/lucadelu/pynasapower.git
 
       - name: Verificar pynasapower
-        run: |
-          python -c "from pynasapower.get_data import query_power; print('pynasapower OK')"
+        run: python -c "from pynasapower.get_data import query_power; print('pynasapower OK')"
 
       - name: Ejecutar run.py
         run: python run.py
