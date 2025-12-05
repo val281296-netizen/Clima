@@ -1,5 +1,5 @@
-from pynasapower.get_data import query_power
-from pynasapower.geometry import point, bbox
+from Clima.get_data import query_power
+from Clima.geometry import point, bbox
 import datetime
 
 # Run for point in Athens and save the result in csv format
