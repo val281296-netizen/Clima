@@ -7,3 +7,10 @@ gpoint = point(23.727539, 37.983810, "EPSG:4326")
 start = datetime.date(2022, 1, 1)
 end = datetime.date(2022, 2, 1)
 data = query_power(gpoint, start, end, "./data", True, "ag", [], "daily", "point", "csv")
+
+# Guardar en CSV en modo append
+with open("clima_prueba.csv", "a", newline="", encoding="utf-8") as file:
+    writer = csv.DictWriter(file, fieldnames=fieldnames)
+    if file.tell() == 0:
+        writer.writeheader()
+    writer.writerows(nuevos)
