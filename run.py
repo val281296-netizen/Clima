@@ -1,3 +1,4 @@
+import pynasapower
 from pynasapower.get_data import query_power
 from pynasapower.geometry import point, bbox
 import datetime
