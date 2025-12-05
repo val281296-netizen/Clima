@@ -1,3 +1,7 @@
-git+https://github.com/lucadelu/pynasapower.git
 pandas
+numpy
 requests
+geopandas
+shapely
+xarray
+scipy
