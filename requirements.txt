@@ -1,7 +1,0 @@
-pandas
-numpy
-requests
-geopandas
-shapely
-xarray
-scipy
