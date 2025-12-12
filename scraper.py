@@ -3,99 +3,72 @@ from bs4 import BeautifulSoup
 import csv
 from datetime import datetime
 import os
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
-URL = "https://www.smn.gob.ar/observaciones"
-OUT_CSV = "observaciones_smn.csv"
+BASE_URL = "https://www.climasurgba.com.ar/detallados"
+CSV_FILE = "climasurgba.csv"
 
+# Cabeceras para simular navegador
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                   "AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
-    "Referer": "https://www.google.com/",
-    "Connection": "keep-alive"
+                  "Chrome/120.0.0.0 Safari/537.36"
 }
 
-def get_session():
-    session = requests.Session()
+# Horas a extraer (cada 2 horas)
+HORAS_2H = [f"{h:02d}:00" for h in range(0, 24, 2)]
 
-    retries = Retry(
-        total=5,
-        backoff_factor=1,
-        status_forcelist=[403, 429, 500, 502, 503, 504]
-    )
+def scrape_dia(fecha_str):
+    url = f"{BASE_URL}/{fecha_str.replace('-', '/')}"
+    print(f"Scrapeando: {url}")
 
-    session.mount("https://", HTTPAdapter(max_retries=retries))
-    session.mount("http://", HTTPAdapter(max_retries=retries))
-
-    session.headers.update(HEADERS)
-    return session
-
-
-def clean_text(x):
-    return x.get_text(strip=True) if x else None
-
-
-def scrape_observaciones():
-    print("Descargando datos del SMN...")
-
-    session = get_session()
-    r = session.get(URL, timeout=30)
+    r = requests.get(url, headers=HEADERS, timeout=30)
     r.raise_for_status()
 
     soup = BeautifulSoup(r.text, "html.parser")
-
     tabla = soup.find("table")
     if not tabla:
-        raise ValueError("No se encontró la tabla de observaciones en la página")
+        print("No se encontró la tabla de datos.")
+        return []
 
     rows = tabla.find_all("tr")
+    data = []
 
-    header = [
-        "estacion", "provincia", "temperatura", "humedad",
-        "presion", "viento", "direccion_viento",
-        "estado", "visibilidad", "timestamp"
-    ]
-
-    estaciones = []
-    timestamp = datetime.now().isoformat()
-
-    for row in rows[1:]:  # skip header row
+    for row in rows[1:]:  # saltar header
         cols = row.find_all("td")
         if len(cols) < 2:
             continue
+        hora = cols[0].get_text(strip=True)
+        if hora not in HORAS_2H:
+            continue  # solo cada 2 horas
 
-        estacion = clean_text(cols[0])
-        provincia = clean_text(cols[1])
-        temperatura = clean_text(cols[2]) if len(cols) > 2 else None
-        humedad = clean_text(cols[3]) if len(cols) > 3 else None
-        viento = clean_text(cols[4]) if len(cols) > 4 else None
-        direccion_viento = clean_text(cols[5]) if len(cols) > 5 else None
-        presion = clean_text(cols[6]) if len(cols) > 6 else None
-        visibilidad = clean_text(cols[7]) if len(cols) > 7 else None
-        estado = clean_text(cols[8]) if len(cols) > 8 else None
+        fila = [fecha_str, hora] + [c.get_text(strip=True) for c in cols[1:]]
+        data.append(fila)
 
-        estaciones.append([
-            estacion, provincia, temperatura, humedad,
-            presion, viento, direccion_viento,
-            estado, visibilidad, timestamp
-        ])
+    return data
 
-    # Escribir CSV en modo append
-    write_header = not os.path.exists(OUT_CSV)
+def main():
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    filas = scrape_dia(hoy)
+    if not filas:
+        print("No hay datos para hoy.")
+        return
 
-    with open(OUT_CSV, "a", newline="", encoding="utf-8") as f:
+    # Chequear si existe CSV
+    existe = os.path.exists(CSV_FILE)
+
+    # Crear header dinámico
+    if filas:
+        # La primera fila ya tiene fecha y hora + resto de columnas
+        header = ["fecha", "hora"] + [f"col{i}" for i in range(1, len(filas[0])-1)]
+    
+    with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        if write_header:
-            writer.writerow(header)
-        writer.writerows(estaciones)
+        if not existe:
+            writer.writerow(["fecha", "hora", "temperatura", "humedad", "viento",
+                             "direccion_viento", "lluvia", "presion"])
+        writer.writerows(filas)
 
-    print(f"Filas añadidas: {len(estaciones)}")
-    print("CSV actualizado correctamente.")
-
+    print(f"Se agregaron {len(filas)} filas al CSV.")
 
 if __name__ == "__main__":
-    scrape_observaciones()
+    main()
