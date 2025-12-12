@@ -2,7 +2,7 @@ name: Scraper ClimaSurGBA Diario
 
 on:
   schedule:
-    - cron: "0 1 * * *"
+    - cron: "0 0 * * *" # Corre todos los días a medianoche
   workflow_dispatch:
 
 jobs:
@@ -19,7 +19,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
           pip install requests beautifulsoup4
 
       - name: Run scraper
@@ -32,4 +31,3 @@ jobs:
           file_pattern: "climasurgba.csv"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
