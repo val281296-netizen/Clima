@@ -3,38 +3,67 @@ from bs4 import BeautifulSoup
 import csv
 from datetime import datetime
 import os
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 URL = "https://www.smn.gob.ar/observaciones"
 OUT_CSV = "observaciones_smn.csv"
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
+    "Referer": "https://www.google.com/",
+    "Connection": "keep-alive"
+}
+
+def get_session():
+    session = requests.Session()
+
+    retries = Retry(
+        total=5,
+        backoff_factor=1,
+        status_forcelist=[403, 429, 500, 502, 503, 504]
+    )
+
+    session.mount("https://", HTTPAdapter(max_retries=retries))
+    session.mount("http://", HTTPAdapter(max_retries=retries))
+
+    session.headers.update(HEADERS)
+    return session
+
+
 def clean_text(x):
     return x.get_text(strip=True) if x else None
+
 
 def scrape_observaciones():
     print("Descargando datos del SMN...")
 
-    r = requests.get(URL, timeout=20)
+    session = get_session()
+    r = session.get(URL, timeout=30)
     r.raise_for_status()
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    estaciones = []
     tabla = soup.find("table")
-
     if not tabla:
         raise ValueError("No se encontró la tabla de observaciones en la página")
 
     rows = tabla.find_all("tr")
 
     header = [
-        "estacion", "provincia", "temperatura", "humedad", 
-        "presion", "viento", "direccion_viento", 
+        "estacion", "provincia", "temperatura", "humedad",
+        "presion", "viento", "direccion_viento",
         "estado", "visibilidad", "timestamp"
     ]
 
+    estaciones = []
     timestamp = datetime.now().isoformat()
 
-    for row in rows[1:]:  # saltamos encabezado visual del SMN
+    for row in rows[1:]:  # skip header row
         cols = row.find_all("td")
         if len(cols) < 2:
             continue
@@ -55,19 +84,17 @@ def scrape_observaciones():
             estado, visibilidad, timestamp
         ])
 
-    # Determinar si es la primera vez (CSV no existe)
+    # Escribir CSV en modo append
     write_header = not os.path.exists(OUT_CSV)
 
-    mode = "a"  # append siempre
-    print(f"Escribiendo {len(estaciones)} filas nuevas en modo append...")
-
-    with open(OUT_CSV, mode, newline="", encoding="utf-8") as f:
+    with open(OUT_CSV, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if write_header:
             writer.writerow(header)
         writer.writerows(estaciones)
 
-    print("CSV actualizado correctamente:", OUT_CSV)
+    print(f"Filas añadidas: {len(estaciones)}")
+    print("CSV actualizado correctamente.")
 
 
 if __name__ == "__main__":
