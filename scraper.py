@@ -1,24 +1,24 @@
+from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 import csv
-from datetime import datetime
 import os
 
 BASE_URL = "https://www.climasurgba.com.ar/detallados"
 CSV_FILE = "climasurgba.csv"
 
-# Cabeceras para simular navegador
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                   "AppleWebKit/537.36 (KHTML, like Gecko) "
                   "Chrome/120.0.0.0 Safari/537.36"
 }
 
-# Horas a extraer (cada 2 horas)
 HORAS_2H = [f"{h:02d}:00" for h in range(0, 24, 2)]
 
-def scrape_dia(fecha_str):
-    url = f"{BASE_URL}/{fecha_str.replace('-', '/')}"
+def scrape_dia(fecha):
+    # fecha en formato datetime
+    fecha_str = fecha.strftime("%Y-%m-%d")
+    url = f"{BASE_URL}/{fecha.strftime('%Y/%m/%d')}"  # construye la URL automáticamente
     print(f"Scrapeando: {url}")
 
     r = requests.get(url, headers=HEADERS, timeout=30)
@@ -47,23 +47,19 @@ def scrape_dia(fecha_str):
     return data
 
 def main():
-    hoy = datetime.now().strftime("%Y-%m-%d")
+    hoy = datetime.now()
     filas = scrape_dia(hoy)
     if not filas:
         print("No hay datos para hoy.")
         return
 
-    # Chequear si existe CSV
     existe = os.path.exists(CSV_FILE)
 
-    # Crear header dinámico
-    if filas:
-        # La primera fila ya tiene fecha y hora + resto de columnas
-        header = ["fecha", "hora"] + [f"col{i}" for i in range(1, len(filas[0])-1)]
-    
+    # Crear CSV si no existe
     with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if not existe:
+            # Aquí definís tus columnas según el sitio
             writer.writerow(["fecha", "hora", "temperatura", "humedad", "viento",
                              "direccion_viento", "lluvia", "presion"])
         writer.writerows(filas)
