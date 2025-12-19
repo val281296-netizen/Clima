@@ -15,9 +15,10 @@ HEADERS = {
 
 HORAS_2H = [f"{h:02d}:00" for h in range(0, 24, 2)]
 
-fecha <- "2025/12/11"
-
-url <- paste0(BASE_URL, "/", fecha)
+def scrape_dia(fecha):
+    # fecha en formato datetime
+    fecha_str = fecha.strftime("%Y-%m-%d")
+    url = f"{BASE_URL}/{fecha.strftime('%Y/%m/%d')}"  # construye la URL automáticamente
     print(f"Scrapeando: {url}")
 
 
